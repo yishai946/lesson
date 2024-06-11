@@ -36,7 +36,7 @@ const CalendarPage = () => {
     date: new Date(),
     startTime: new Date(),
     endTime: new Date(),
-    student: students[0],
+    student: userAssignments[0].user,
     notes: "",
   });
   const [studentsArr, setStudentsArr] = useState([]);
@@ -45,162 +45,179 @@ const CalendarPage = () => {
   const [markedDatesObject, setMarkedDatesObject] = useState({});
   const [options, setOptions] = useState(false);
 
-  useEffect(() => {
-    const temp = students.filter((student) => student.hours > 0);
-    setStudentsArr(temp);
-  }, [students]);
+  // useEffect(() => {
+  //   // get the students array from the userAssignments array that have remaining hours
+  //   if (user.role == "teacher") {
+  //     const temp = userAssignments.filter((assignment) => assignment.hours > 0);
+  //     const students = temp.map((assignment) => {
+  //       return {
+  //         ...assignment.user,
+  //       };
+  //     });
+  //     setStudentsArr(students);
+  //   }
+  // }, [userAssignments]);
 
   useEffect(() => {
     if (lessons.length > 0) {
       filterLessons();
       updateLessonDates();
     }
-  }, [lessons, selected, students]);
+  }, [lessons, selected]);
 
-  const closeModal = () => {
-    setModalVisible(false);
-    setNewLesson({
-      date: new Date(),
-      startTime: new Date(),
-      endTime: new Date(),
-      student: students[0],
-      notes: "",
-    });
-    setOptions(false);
-  };
+  // const closeModal = () => {
+  //   setModalVisible(false);
+  //   setNewLesson({
+  //     date: new Date(),
+  //     startTime: new Date(),
+  //     endTime: new Date(),
+  //     student: studentsArr[0],
+  //     notes: "",
+  //   });
+  //   setOptions(false);
+  // };
 
-  const openOptions = (lesson) => {
-    const [year, month, day] = lesson.date.split("-").map(Number);
-    const [startHour, startMinute] = lesson.startTime.split(":").map(Number);
-    const [endHour, endMinute] = lesson.endTime.split(":").map(Number);
+  // const openOptions = (lesson) => {
+  //   const [year, month, day] = lesson.date.split("-").map(Number);
+  //   const [startHour, startMinute] = lesson.startTime.split(":").map(Number);
+  //   const [endHour, endMinute] = lesson.endTime.split(":").map(Number);
 
-    const endTime = new Date(year, month - 1, day, endHour, endMinute);
-    const startTime = new Date(year, month - 1, day, startHour, startMinute);
+  //   const endTime = new Date(year, month - 1, day, endHour, endMinute);
+  //   const startTime = new Date(year, month - 1, day, startHour, startMinute);
 
-    // find the student object from the students array
-    const student = students.find((student) => student.id === lesson.student);
+  //   // find the student object from the students array
+  //   const student = userAssignments.find((assignment) => assignment.studentId === lesson.studentId).user;
 
-    setNewLesson({ ...lesson, startTime, endTime, date: startTime, student });
-    setOptions(true);
-    setModalVisible(true);
-  };
+  //   setNewLesson({ ...lesson, startTime, endTime, date: startTime, student });
+  //   setOptions(true);
+  //   setModalVisible(true);
+  // };
 
-  const handleDateChange = (event, selectedDate) => {
-    setNewLesson({ ...newLesson, date: selectedDate });
-  };
+  // const handleDateChange = (event, selectedDate) => {
+  //   setNewLesson({ ...newLesson, date: selectedDate });
+  // };
 
-  const handlePickStartTime = (event, selectedDate) => {
-    setNewLesson({ ...newLesson, startTime: selectedDate });
-  };
+  // const handlePickStartTime = (event, selectedDate) => {
+  //   setNewLesson({ ...newLesson, startTime: selectedDate });
+  // };
 
-  const handlePickEndTime = (event, selectedDate) => {
-    setNewLesson({ ...newLesson, endTime: selectedDate });
-  };
+  // const handlePickEndTime = (event, selectedDate) => {
+  //   setNewLesson({ ...newLesson, endTime: selectedDate });
+  // };
 
-  const handleStudentChange = (name) => {
-    const selected = students.find((student) => student.name === name);
-    setNewLesson({ ...newLesson, student: selected });
-  };
+  // const handleStudentChange = (name) => {
+  //   const selected = students.find((student) => student.name === name);
+  //   setNewLesson({ ...newLesson, student: selected });
+  // };
 
-  const add = async () => {
-    try {
-      setLoading(true);
+  // const add = async () => {
+  //   try {
+  //     setLoading(true);
 
-      let pastDuration = 0;
-      if (options) {
-        // get the lesson from the lessons array
-        const lesson = lessons.find((item) => item.id === newLesson.id);
-        pastDuration = lesson.hours + lesson.minutes / 60;
-      }
+  //     let pastDuration = 0;
+  //     if (options) {
+  //       // get the lesson from the lessons array
+  //       const lesson = lessons.find((item) => item.id === newLesson.id);
+  //       pastDuration = lesson.hours + lesson.minutes / 60;
+  //     }
 
-      // Check if end time is before start time
-      if (newLesson.endTime < newLesson.startTime) {
-        throw new Error("End time cannot be before start time.");
-      }
+  //     // Check if end time is before start time
+  //     if (newLesson.endTime < newLesson.startTime) {
+  //       throw new Error("End time cannot be before start time.");
+  //     }
 
-      // Check if the selected student has enough hours left for the new lesson
-      if (
-        newLesson.student.hours <
-        calculateLessonHours(newLesson.startTime, newLesson.endTime)
-      ) {
-        throw new Error(
-          "Selected student doesn't have enough hours left for this lesson."
-        );
-      }
+  //     // Check if the selected student has enough hours left for the new lesson
+  //     if (
+  //       newLesson.student.hours <
+  //       calculateLessonHours(newLesson.startTime, newLesson.endTime)
+  //     ) {
+  //       throw new Error(
+  //         "Selected student doesn't have enough hours left for this lesson."
+  //       );
+  //     }
 
-      const lesson = {
-        ...newLesson,
-        student: newLesson.student.id,
-        studentName: newLesson.student.name,
-        date: newLesson.date.toISOString().split("T")[0], // Extract date part from ISO string
-        startTime: newLesson.startTime.toLocaleTimeString("en-US", {
-          hour: "2-digit",
-          minute: "2-digit",
-        }), // Convert time to a string in the format "HH:MM"
-        endTime: newLesson.endTime.toLocaleTimeString("en-US", {
-          hour: "2-digit",
-          minute: "2-digit",
-        }), // Convert time to a string in the format "HH:MM"
-      };
+  //     const lesson = {
+  //       ...newLesson,
+  //       studentId: newLesson.student.id,
+  //       studentName: newLesson.student.name,
+  //       date: newLesson.date.toISOString().split("T")[0], // Extract date part from ISO string
+  //       startTime: newLesson.startTime.toLocaleTimeString("en-US", {
+  //         hour: "2-digit",
+  //         minute: "2-digit",
+  //       }), // Convert time to a string in the format "HH:MM"
+  //       endTime: newLesson.endTime.toLocaleTimeString("en-US", {
+  //         hour: "2-digit",
+  //         minute: "2-digit",
+  //       }), // Convert time to a string in the format "HH:MM"
+  //     };
 
-      // check if the startTime and endTime are not in the middle of other lessons
-      const filtered = lessons.filter((item) => {
-        if (item.date) {
-          return item.date === lesson.date;
-        }
-        return false;
-      });
+  //     // check if the startTime and endTime are not in the middle of other lessons
+  //     const filtered = lessons.filter((item) => {
+  //       if (item.date) {
+  //         return item.date === lesson.date;
+  //       }
+  //       return false;
+  //     });
 
-      const convertToMinutes = (timeString) => {
-        const [hours, minutes] = timeString.split(":").map(Number);
-        return hours * 60 + minutes;
-      };
+  //     const convertToMinutes = (timeString) => {
+  //       const [hours, minutes] = timeString.split(":").map(Number);
+  //       return hours * 60 + minutes;
+  //     };
 
-      filtered.map((item) => {
-        if (
-          convertToMinutes(item.startTime) <
-            convertToMinutes(lesson.startTime) &&
-          convertToMinutes(lesson.startTime) < convertToMinutes(item.endTime) &&
-          item.id !== lesson.id
-        ) {
-          throw new Error("The start time is in the middle of another lesson");
-        } else if (
-          convertToMinutes(item.startTime) < convertToMinutes(lesson.endTime) &&
-          convertToMinutes(lesson.endTime) < convertToMinutes(item.endTime) &&
-          item.id !== lesson.id
-        ) {
-          throw new Error("The end time is in the middle of another lesson");
-        }
-      });
+  //     filtered.map((item) => {
+  //       if (
+  //         convertToMinutes(item.startTime) <
+  //           convertToMinutes(lesson.startTime) &&
+  //         convertToMinutes(lesson.startTime) < convertToMinutes(item.endTime) &&
+  //         item.id !== lesson.id
+  //       ) {
+  //         throw new Error("The start time is in the middle of another lesson");
+  //       } else if (
+  //         convertToMinutes(item.startTime) < convertToMinutes(lesson.endTime) &&
+  //         convertToMinutes(lesson.endTime) < convertToMinutes(item.endTime) &&
+  //         item.id !== lesson.id
+  //       ) {
+  //         throw new Error("The end time is in the middle of another lesson");
+  //       }
+  //     });
 
-      await addLesson(lesson, pastDuration);
-      closeModal();
-    } catch (e) {
-      Alert.alert(e.message); // Display the error message in the alert
-    } finally {
-      setLoading(false);
-    }
-  };
+  //     await addLesson(lesson, pastDuration);
+  //     closeModal();
+  //   } catch (e) {
+  //     Alert.alert(e.message); // Display the error message in the alert
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
 
-  const calculateLessonHours = (startTime, endTime) => {
-    const start = new Date(startTime);
-    const end = new Date(endTime);
-    const diff = (end.getTime() - start.getTime()) / (1000 * 60 * 60); // Convert milliseconds to hours
-    return diff;
-  };
+  // const calculateLessonHours = (startTime, endTime) => {
+  //   const start = new Date(startTime);
+  //   const end = new Date(endTime);
+  //   const diff = (end.getTime() - start.getTime()) / (1000 * 60 * 60); // Convert milliseconds to hours
+  //   return diff;
+  // };
 
   const handleDayPress = (selectedDate) => {
     setSelected(selectedDate.dateString);
   };
 
-  const filterLessons = () => {
-    const filtered = lessons.filter((lesson) => {
-      if (lesson.date) {
-        return lesson.date === selected;
-      }
-      return false;
-    });
+  const formatDateFromTimestamp = (timestamp) => {
+    const date = new Date(timestamp.seconds * 1000); // Convert seconds to milliseconds
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0"); // Months are 0-based, so add 1
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
 
+  const filterLessons = () => {
+    // Convert Firestore Timestamp to 'YYYY-MM-DD' format
+
+    // Filter lessons of the selected date
+    const filtered = lessons.filter(
+      (lesson) => formatDateFromTimestamp(lesson.date) === selected
+    );
+
+    // Sort the lessons by start time
     filtered.sort((a, b) => {
       const parseTime = (timeStr) => {
         const [hours, minutes] = timeStr.split(":").map(Number);
@@ -213,13 +230,15 @@ const CalendarPage = () => {
       return startTimeA - startTimeB;
     });
 
+    // Update local state
     setFilteredLessons(filtered);
   };
 
   const updateLessonDates = () => {
     const dates = lessons.reduce((acc, lesson) => {
       if (lesson.date) {
-        acc[lesson.date] = { marked: true, dotColor: "royalblue" };
+        const formattedDate = formatDateFromTimestamp(lesson.date);
+        acc[formattedDate] = { marked: true, dotColor: "royalblue" };
       }
       return acc;
     }, {});
@@ -236,18 +255,18 @@ const CalendarPage = () => {
     setMarkedDatesObject(markedDatesObject);
   };
 
-  const handleDelete = async () => {
-    try {
-      setLoading(true);
-      setModalVisible(false);
-      await deleteLesson(newLesson);
-      closeModal();
-    } catch (e) {
-      console.log(e);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // const handleDelete = async () => {
+  //   try {
+  //     setLoading(true);
+  //     setModalVisible(false);
+  //     await deleteLesson(newLesson);
+  //     closeModal();
+  //   } catch (e) {
+  //     console.log(e);
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
 
   return loading ? (
     <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
@@ -256,13 +275,13 @@ const CalendarPage = () => {
   ) : (
     <View>
       <Calendar
-        onDayPress={handleDayPress}
+        onDayPress={handleDayPress} // can cause problems
         initialDate={initDate}
         markedDates={markedDatesObject}
         enableSwipeMonths={true}
       />
 
-      <ScrollView
+      {/* <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
@@ -275,9 +294,9 @@ const CalendarPage = () => {
             withOptions={true}
           />
         ))}
-      </ScrollView>
+      </ScrollView> */}
 
-      <Modal
+      {/* <Modal
         isVisible={modalVisible && studentsArr.length > 0}
         onBackdropPress={closeModal}
         style={styles.modal}
@@ -288,7 +307,6 @@ const CalendarPage = () => {
             behavior={Platform.OS === "ios" ? "padding" : "height"}
             style={styles.modalContainer}
           >
-            {/* students */}
             <View style={{ alignItems: "center" }}>
               <Picker
                 selectedValue={newLesson.student ? newLesson.student.name : ""}
@@ -307,7 +325,6 @@ const CalendarPage = () => {
               </Picker>
             </View>
 
-            {/* date */}
             <View style={styles.row}>
               <Text style={styles.modalText}>Date</Text>
               <DateTimePicker
@@ -319,7 +336,6 @@ const CalendarPage = () => {
               />
             </View>
 
-            {/* start time*/}
             <View style={styles.row}>
               <Text style={styles.modalText}>Start</Text>
               <DateTimePicker
@@ -331,7 +347,6 @@ const CalendarPage = () => {
               />
             </View>
 
-            {/* end time */}
             <View style={styles.row}>
               <Text style={styles.modalText}>End</Text>
               <DateTimePicker
@@ -343,7 +358,6 @@ const CalendarPage = () => {
               />
             </View>
 
-            {/* notes */}
             <View style={styles.row}>
               <Text style={styles.modalText}>Notes</Text>
               <TextInput
@@ -356,7 +370,6 @@ const CalendarPage = () => {
               />
             </View>
 
-            {/* buttons */}
             <View style={styles.modalButtons}>
               {!options ? (
                 <TouchableOpacity
@@ -387,7 +400,7 @@ const CalendarPage = () => {
             </View>
           </KeyboardAvoidingView>
         </TouchableWithoutFeedback>
-      </Modal>
+      </Modal> */}
     </View>
   );
 };

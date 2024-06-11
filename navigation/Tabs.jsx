@@ -16,7 +16,7 @@ import HomeStudent from "../screens/HomeStudent";
 const Tab = createBottomTabNavigator();
 
 const Tabs = () => {
-  const { setModalVisible, user } = useAppContext();
+  const { setModalVisible, user, setUser } = useAppContext();
 
   const isTeacher = user && user.role == "teacher";
 

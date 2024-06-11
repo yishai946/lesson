@@ -20,7 +20,6 @@ export const AppProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
   const [students, setStudents] = useState([]);
-  const [teachers, setTeachers] = useState([]);
   const [userAssignments, setUserAssignments] = useState([]);
   const [lessons, setLessons] = useState([]);
   const uid = auth.currentUser?.uid;
@@ -28,94 +27,14 @@ export const AppProvider = ({ children }) => {
   useEffect(() => {
     if (user) {
       fetchAssignments();
-      fetchLessons();
     }
   }, [user]);
 
-  // const fetchTeachers = async () => {
-  //   try {
-  //     // Get assignments data and teachers ids array
-  //     const q = query(
-  //       collection(db, "assignments"),
-  //       where("studentId", "==", uid),
-  //       orderBy("timestamp", "desc")
-  //     );
-  //     const res1 = await getDocs(q);
-  //     const teachersIds = [];
-  //     const teachersAssignments = [];
-  //     res1.forEach((doc) => {
-  //       teachersIds.push(doc.data().teacherId);
-  //       teachersAssignments.push(doc.data());
-  //     });
-
-  //     // Get teachers data
-  //     const q1 = query(
-  //       collection(db, "users"),
-  //       where("__name__", "in", teachersIds)
-  //     );
-
-  //     const res2 = await getDocs(q1);
-  //     const teachersData = res2.docs.map((doc) => {
-  //       return { ...doc.data(), docId: doc.id };
-  //     });
-
-  //     // equal join to teachersAssignments with teachersData
-  //     teachersAssignments.forEach((assignment) => {
-  //       const teacher = teachersData.find(
-  //         (doc) => doc.docId === assignment.teacherId
-  //       );
-  //       assignment.teacher = teacher;
-  //     });
-
-  //     // set teachers state
-  //     setTeachers(teachersAssignments);
-  //   } catch (e) {
-  //     console.error("error getting teachers: ", e);
-  //   }
-  // };
-
-  // const fetchStudents = async () => {
-  //   try {
-  //     // Get assignments data and students ids array
-  //     const q1 = query(
-  //       collection(db, "assignments"),
-  //       where("teacherId", "==", uid),
-  //       orderBy("timestamp", "desc")
-  //     );
-  //     const res1 = await getDocs(q1);
-  //     const studentsIds = [];
-  //     const studentsAssignments = [];
-  //     res1.forEach((doc) => {
-  //       studentsIds.push(doc.data().studentId);
-  //       studentsAssignments.push(doc.data());
-  //     });
-
-  //     // Get students data
-  //     const q2 = query(
-  //       collection(db, "users"),
-  //       where("__name__", "in", studentsIds)
-  //     );
-
-  //     const res2 = await getDocs(q2);
-  //     const studentsData = res2.docs.map((doc) => {
-  //       return { ...doc.data(), docId: doc.id };
-  //     });
-
-  //     // equal join to studentsAssignments with studentsData
-  //     studentsAssignments.forEach((assignment) => {
-  //       const student = studentsData.find(
-  //         (doc) => doc.docId === assignment.studentId
-  //       );
-  //       assignment.student = student;
-  //     });
-
-  //     console.log(studentsAssignments)
-      
-  //     setStudents(studentsAssignments);
-  //   } catch (e) {
-  //     console.error("error getting students: ", e);
-  //   }
-  // };
+  useEffect(() => {
+    if (userAssignments.length > 0) {
+      fetchLessons();
+    }
+  }, [userAssignments]);
 
   const fetchAssignments = async () => {
     try {
@@ -136,10 +55,11 @@ export const AppProvider = ({ children }) => {
       );
       const res1 = await getDocs(q);
       const userIds = [];
-      const assignments = [];
+      const assignments = []
       res1.forEach((doc) => {
-        userIds.push(doc.data()[oppositeRoleField]);
-        assignments.push(doc.data());
+        const assignmentData = { ...doc.data(), id: doc.id };
+        userIds.push(assignmentData[oppositeRoleField]);
+        assignments.push(assignmentData);
       });
 
       // Fetch user data based on the ids collected
@@ -161,7 +81,6 @@ export const AppProvider = ({ children }) => {
         assignment.user = userData;
       });
 
-
       // Update state
       setUserAssignments(assignments);
     } catch (e) {
@@ -169,12 +88,12 @@ export const AppProvider = ({ children }) => {
     }
   };
 
-
   const fetchLessons = async () => {
     try {
+      const assignmentIds = userAssignments.map((assignment) => assignment.id);
       const q = query(
         collection(db, "lessons"),
-        where(user.role == "teacher" ? "teacherId" : "studentId", "==", uid),
+        where("assignmentId", "in", assignmentIds),
         orderBy("startTime", "desc")
       );
       const res = await getDocs(q);
@@ -182,12 +101,14 @@ export const AppProvider = ({ children }) => {
       res.forEach((doc) => {
         lessons.push({ ...doc.data(), id: doc.id });
       });
+
       setLessons(lessons);
     } catch (e) {
       console.error("error getting lessons: ", e);
     }
   };
 
+  // TODO: fix the addLesson function
   const addLesson = async (newLesson, pastDuration) => {
     try {
       // Parse start and end time strings into Date objects

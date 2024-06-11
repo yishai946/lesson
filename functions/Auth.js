@@ -99,7 +99,6 @@ const Auth = {
           id: userObj.id,
           username: userObj.username,
           study: userObj.study,
-          hours: 0,
           image: userObj.image,
           role: userObj.role,
           teachersIds: [],
@@ -107,7 +106,6 @@ const Auth = {
 
         // set local state
         setUser({
-          hours: 0,
           teachersIds: [],
           ...userObj,
         });
