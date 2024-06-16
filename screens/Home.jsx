@@ -35,7 +35,7 @@ const Home = () => {
     >
       <Total hours={user.hours} money={user.money} />
       <Report lessons={toReport} />
-      <LessonsList lessons={lessonsToday} />
+      <LessonsList lessons={lessonsToday} withOptions={false} />
     </ScrollView>
   );
 };

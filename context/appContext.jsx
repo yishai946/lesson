@@ -11,6 +11,7 @@ import {
   orderBy,
   deleteDoc,
   getDoc,
+  onSnapshot,
 } from "firebase/firestore";
 
 const AppContext = createContext();
@@ -24,181 +25,132 @@ export const AppProvider = ({ children }) => {
   const [lessons, setLessons] = useState([]);
   const uid = auth.currentUser?.uid;
 
+  // real time listener for new assignments for user
   useEffect(() => {
-    if (user) {
-      fetchAssignments();
-    }
-  }, [user]);
+    const fetchAssignments = async () => {
+      if (!user) return;
 
+      try {
+        const isTeacher = user.role === "teacher";
+        const roleField = isTeacher ? "teacherId" : "studentId";
+        const oppositeRoleField = isTeacher ? "studentId" : "teacherId";
+        const q = query(
+          collection(db, "assignments"),
+          where(roleField, "==", uid),
+          orderBy("timestamp", "desc")
+        );
+
+        const unsubscribe = onSnapshot(q, async (snapshot) => {
+          const assignments = [];
+          const userIds = [];
+
+          // Get assignments data and corresponding user ids array
+          snapshot.forEach((doc) => {
+            const assignmentData = { ...doc.data(), id: doc.id };
+            userIds.push(assignmentData[oppositeRoleField]);
+            assignments.push(assignmentData);
+          });
+
+          // Fetch user data based on the ids collected
+          const userQuery = query(
+            collection(db, "users"),
+            where("__name__", "in", userIds)
+          );
+
+          const res = await getDocs(userQuery);
+          const usersData = res.docs.map((doc) => {
+            return { ...doc.data(), docId: doc.id };
+          });
+
+          // Join assignments with user data
+          assignments.forEach((assignment) => {
+            const userData = usersData.find(
+              (doc) => doc.docId === assignment[oppositeRoleField]
+            );
+            assignment.user = userData;
+          });
+
+          // Update state
+          setUserAssignments(assignments);
+        });
+
+        return unsubscribe;
+      } catch (e) {
+        console.error("error in real time listener: ", e);
+      }
+    };
+
+    fetchAssignments();
+  }, [user?.role]);
+
+  // real time listener for user lessons
   useEffect(() => {
-    if (userAssignments.length > 0) {
-      fetchLessons();
+    if (!userAssignments.length > 0) return;
+
+    const fetchLessons = async () => {
+      try {
+        const assignmentIds = userAssignments.map((assignment) => assignment.id);
+        const q = query(
+          collection(db, "lessons"),
+          where("assignmentId", "in", assignmentIds),
+          orderBy("startTime", "desc")
+        );
+
+        const unsubscribe = onSnapshot(q, async (snapshot) => {
+          const lessons = [];
+          snapshot.forEach((doc) => {
+            lessons.push({ ...doc.data(), id: doc.id });
+          });
+
+          // add assignment data to lessons
+          const temp = attachAssignmentsToLessons(lessons);
+
+          setLessons(temp);
+        });
+
+        return unsubscribe;
+      } catch (e) {
+        console.error("error getting lessons: ", e);
+      }
     }
+    
+    fetchLessons();
   }, [userAssignments]);
 
-  const fetchAssignments = async () => {
-    try {
-      if (!user) {
-        throw new Error("User is not authenticated");
-      }
 
-      // Determine the user role and set appropriate query fields
-      const isTeacher = user.role === "teacher";
-      const roleField = isTeacher ? "teacherId" : "studentId";
-      const oppositeRoleField = isTeacher ? "studentId" : "teacherId";
-
-      // Get assignments data and corresponding user ids array
-      const q = query(
-        collection(db, "assignments"),
-        where(roleField, "==", uid),
-        orderBy("timestamp", "desc")
+  const attachAssignmentsToLessons = (lessons) => {
+    return lessons.map((lesson) => {
+      const assignment = userAssignments.find(
+        (assignment) => assignment.id === lesson.assignmentId
       );
-      const res1 = await getDocs(q);
-      const userIds = [];
-      const assignments = []
-      res1.forEach((doc) => {
-        const assignmentData = { ...doc.data(), id: doc.id };
-        userIds.push(assignmentData[oppositeRoleField]);
-        assignments.push(assignmentData);
-      });
-
-      // Fetch user data based on the ids collected
-      const userQuery = query(
-        collection(db, "users"),
-        where("__name__", "in", userIds)
-      );
-
-      const res2 = await getDocs(userQuery);
-      const usersData = res2.docs.map((doc) => {
-        return { ...doc.data(), docId: doc.id };
-      });
-
-      // Join assignments with user data
-      assignments.forEach((assignment) => {
-        const userData = usersData.find(
-          (doc) => doc.docId === assignment[oppositeRoleField]
-        );
-        assignment.user = userData;
-      });
-
-      // Update state
-      setUserAssignments(assignments);
-    } catch (e) {
-      console.error("error fetching assignments: ", e);
-    }
+      lesson.assignment = assignment;
+      return lesson;
+    });
   };
 
-  const fetchLessons = async () => {
+  const addLesson = async (newLesson, assignmentHours) => {
     try {
-      const assignmentIds = userAssignments.map((assignment) => assignment.id);
-      const q = query(
-        collection(db, "lessons"),
-        where("assignmentId", "in", assignmentIds),
-        orderBy("startTime", "desc")
-      );
-      const res = await getDocs(q);
-      const lessons = [];
-      res.forEach((doc) => {
-        lessons.push({ ...doc.data(), id: doc.id });
-      });
-
-      setLessons(lessons);
-    } catch (e) {
-      console.error("error getting lessons: ", e);
-    }
-  };
-
-  // TODO: fix the addLesson function
-  const addLesson = async (newLesson, pastDuration) => {
-    try {
-      // Parse start and end time strings into Date objects
-      const startTime = new Date(`2000-01-01T${newLesson.startTime}`);
-      const endTime = new Date(`2000-01-01T${newLesson.endTime}`);
-
-      // Calculate duration in milliseconds
-      let durationMs = endTime.getTime() - startTime.getTime();
-
-      // Convert duration from milliseconds to hours and minutes
-      const hours = Math.floor(durationMs / (60 * 60 * 1000));
-      const minutes = Math.floor((durationMs % (60 * 60 * 1000)) / (60 * 1000));
-
-      // Update student hours
-      const studentRef = doc(db, "students", newLesson.student);
-      const studentSnap = await getDoc(studentRef);
-      if (!studentSnap.exists()) {
-        throw new Error("Student does not exist");
-      }
-
-      const studentData = studentSnap.data();
-      const remainingHours =
-        studentData.hours - (hours + minutes / 60) + pastDuration;
+      // Update assignment hours
+      const { user, id, ...rest } = newLesson.assignment;
+      const assignmentRef = doc(db, "assignments", id);
+      await setDoc(assignmentRef, { ...rest, hours: assignmentHours });
 
       // Add lesson document
-      const id = newLesson.startTime + uid;
-      await setDoc(doc(db, "lessons", id), {
-        ...newLesson,
-        teacherId: uid,
+      let { assignment, lessonId, ...lessonData } = newLesson;
+      const lessonObj = {
+        ...lessonData,
+        assignmentId: assignment.id,
         timestamp: serverTimestamp(),
-        hours,
-        minutes,
-        done: false,
-      });
+      };
 
-      // Update lessons state
-      const temp = lessons.filter((lesson) => lesson.id !== newLesson.id);
-      temp.unshift({
-        ...newLesson,
-        teacherId: auth.currentUser.uid,
-        hours,
-        minutes,
-        id: id,
-        done: false,
-      });
-      setLessons(temp);
-
-      await setDoc(studentRef, {
-        ...studentData,
-        hours: remainingHours,
-      });
-
-      // Update students state
-      const tempStudents = students.map((student) => {
-        if (student.id === newLesson.student) {
-          return { ...student, hours: remainingHours };
-        }
-        return student;
-      });
-
-      setStudents(tempStudents);
+      // Define lesson id if it doesn't exist
+      lessonId =
+        lessonId !== "" ? lessonId : `${lessonData.startTime.getTime()}${id}`;
+      await setDoc(doc(db, "lessons", lessonId), lessonObj);
     } catch (e) {
-      return e;
+      console.error("Error in addLesson:", e);
     }
   };
-
-  // const addStudent = async (newStudent) => {
-  //   try {
-  //     await setDoc(doc(db, "users", uid), {
-  //       ...newStudent,
-  //       teacherId: auth.currentUser.uid,
-  //       timestamp: serverTimestamp(),
-  //     });
-  //     const temp = students.filter((student) => student.id !== newStudent.id);
-  //     temp.unshift({ ...newStudent, teacherId: auth.currentUser.uid });
-  //     setStudents(temp);
-  //   } catch (e) {
-  //     console.error("error adding student: ", e);
-  //   }
-  // };
-
-  // const deleteStudent = async (id) => {
-  //   try {
-  //     await deleteDoc(doc(db, "students", id));
-  //     const temp = students.filter((student) => student.id !== id);
-  //     setStudents(temp);
-  //   } catch (e) {
-  //     console.error("error deleting student: ", e);
-  //   }
-  // };
 
   const deleteLesson = async (lesson) => {
     try {
@@ -284,15 +236,10 @@ export const AppProvider = ({ children }) => {
         setLoading,
         modalVisible,
         setModalVisible,
-        // students,
-        // addStudent,
-        // deleteStudent,
         lessons,
         addLesson,
         deleteLesson,
         checkLesson,
-        // teachers,
-
         userAssignments,
       }}
     >

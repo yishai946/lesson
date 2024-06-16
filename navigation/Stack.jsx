@@ -27,7 +27,7 @@ const Stack = () => {
           setUser(null);
         }
       } catch (e) {
-        console.log(e);
+        console.error(e);
       } finally {
         if (loading) {
           setLoading(false);

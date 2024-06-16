@@ -73,7 +73,7 @@ const Signup = ({ navigation }) => {
           throw new Error("Invalid email. Please try again.");
       }
     } catch (error) {
-      console.log(error);
+      console.error(error);
       Alert.alert(error.message);
     } finally {
       setLoading(false);

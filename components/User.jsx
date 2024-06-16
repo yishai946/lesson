@@ -10,7 +10,7 @@ import { Entypo } from "@expo/vector-icons";
 
 const width = Dimensions.get("window").width;
 
-const Student = ({ item }) => {
+const Student = ({ item, teacher }) => {
   return (
     item && (
       <View style={styles.container}>
@@ -22,18 +22,22 @@ const Student = ({ item }) => {
         </TouchableOpacity> */}
         <Text style={styles.name}>{item.user.username}</Text>
         <View style={{ gap: 10 }}>
-          <View style={styles.row}>
-            <Text>HOURS</Text>
-            <Text>{item.hours}</Text>
-          </View>
-          <View style={styles.row}>
-            <Text>ID</Text>
-            <Text>{item.user.id}</Text>
-          </View>
-          <View style={styles.row}>
-            <Text>STUDY</Text>
-            <Text>{item.user.study}</Text>
-          </View>
+          {teacher && (
+            <>
+              <View style={styles.row}>
+                <Text>HOURS</Text>
+                <Text>{item.hours}</Text>
+              </View>
+              <View style={styles.row}>
+                <Text>ID</Text>
+                <Text>{item.user.id}</Text>
+              </View>
+              <View style={styles.row}>
+                <Text>STUDY</Text>
+                <Text>{item.user.study}</Text>
+              </View>
+            </>
+          )}
           <View style={styles.row}>
             <Text>PHONE</Text>
             <Text>{item.user.phone}</Text>

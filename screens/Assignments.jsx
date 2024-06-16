@@ -16,57 +16,7 @@ import User from "../components/User";
 import { useAppContext } from "../context/appContext";
 
 const Assignments = () => {
-  const { loading, userAssignments } = useAppContext();
-
-  // const [newStudent, setNewStudent] = useState({});
-  // const [optionsOpen, setOptionsOpen] = useState(false);
-
-  // const add = async () => {
-  //   try {
-  //     if (
-  //       newStudent.name &&
-  //       newStudent.hours &&
-  //       newStudent.id &&
-  //       newStudent.study &&
-  //       newStudent.phone
-  //     ) {
-  //       setLoading(true);
-  //       closeModal();
-  //       await addStudent(newStudent);
-  //     } else {
-  //       Alert.alert("Please fill all the fields");
-  //     }
-  //   } catch (e) {
-  //     console.log(e);
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
-
-  // const handleDelete = async () => {
-  //   try {
-  //     setLoading(true);
-  //     setModalVisible(false);
-  //     await deleteStudent(newStudent.id);
-  //     closeModal();
-  //   } catch (e) {
-  //     console.log(e);
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
-
-  // const openOptions = (student) => {
-  //   setNewStudent(student);
-  //   setOptionsOpen(true);
-  //   setModalVisible(true);
-  // };
-
-  // const closeModal = () => {
-  //   setModalVisible(false);
-  //   setNewStudent({});
-  //   setOptionsOpen(false);
-  // };
+  const { loading, userAssignments, user } = useAppContext();
 
   return (
     <>
@@ -80,9 +30,9 @@ const Assignments = () => {
         <FlatList
           contentContainerStyle={styles.container}
           data={userAssignments}
-          keyExtractor={(item) => item.user.docId}
+          keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
-            <User item={item} />
+            <User item={item} teacher={user.role == "teacher"} />
           )}
         />
       )}
