@@ -81,7 +81,7 @@ const CalendarPage = () => {
   const openOptions = (lesson) => {
     // find the student object from the students array
     const assignment = userAssignments.find(
-      (assignment) => assignment.studentId === lesson.assignment.studentId
+      (assignment) => assignment.id === lesson.assignment.id
     );
 
     const startTime = new Date(lesson.startTime.seconds * 1000);
@@ -113,9 +113,7 @@ const CalendarPage = () => {
   };
 
   const handleStudentChange = (id) => {
-    const selected = userAssignments.find(
-      (assignment) => assignment.id === id
-    );
+    const selected = userAssignments.find((assignment) => assignment.id === id);
     setNewLesson({ ...newLesson, assignment: selected });
   };
 
@@ -268,7 +266,11 @@ const CalendarPage = () => {
     try {
       setLoading(true);
       setModalVisible(false);
-      await deleteLesson(newLesson);
+      await deleteLesson(
+        newLesson.id,
+        newLesson.hours,
+        newLesson.assignment.id
+      );
       closeModal();
     } catch (e) {
       console.error(e);
@@ -318,9 +320,7 @@ const CalendarPage = () => {
               <View style={{ alignItems: "center" }}>
                 <Picker
                   selectedValue={
-                    newLesson.assignment
-                      ? newLesson.assignment.id
-                      : ""
+                    newLesson.assignment ? newLesson.assignment.id : ""
                   }
                   onValueChange={(itemValue, itemIndex) =>
                     handleStudentChange(itemValue)

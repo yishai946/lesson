@@ -40,7 +40,9 @@ const Lesson = ({ lesson, openOptions, withOptions }) => {
           <Entypo name="dots-three-horizontal" size={24} color="black" />
         </TouchableOpacity>
       )}
-      <Text style={styles.name}>{lesson.assignment.user.username}</Text>
+      <Text style={styles.name}>
+        {lesson.assignment.user.username} - {lesson.assignment.subject}
+      </Text>
       <View style={styles.row}>
         <Text>START</Text>
         <Text>{startTime}</Text>

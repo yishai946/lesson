@@ -12,6 +12,7 @@ import {
   deleteDoc,
   getDoc,
   onSnapshot,
+  updateDoc,
 } from "firebase/firestore";
 
 const AppContext = createContext();
@@ -89,7 +90,9 @@ export const AppProvider = ({ children }) => {
 
     const fetchLessons = async () => {
       try {
-        const assignmentIds = userAssignments.map((assignment) => assignment.id);
+        const assignmentIds = userAssignments.map(
+          (assignment) => assignment.id
+        );
         const q = query(
           collection(db, "lessons"),
           where("assignmentId", "in", assignmentIds),
@@ -112,11 +115,10 @@ export const AppProvider = ({ children }) => {
       } catch (e) {
         console.error("error getting lessons: ", e);
       }
-    }
-    
+    };
+
     fetchLessons();
   }, [userAssignments]);
-
 
   const attachAssignmentsToLessons = (lessons) => {
     return lessons.map((lesson) => {
@@ -152,30 +154,17 @@ export const AppProvider = ({ children }) => {
     }
   };
 
-  const deleteLesson = async (lesson) => {
+  const deleteLesson = async (lessonId, hours, assignmentId) => {
     try {
       // delete lesson document
-      await deleteDoc(doc(db, "lessons", lesson.id));
+      await deleteDoc(doc(db, "lessons", lessonId));
 
-      // Update lessons state
-      const temp = lessons.filter((item) => item.id !== lesson.id);
-      setLessons(temp);
-
-      // Update student hours
-      const studentRef = doc(db, "students", lesson.student.id);
-      const studentSnap = await getDoc(studentRef);
-      if (!studentSnap.exists()) {
-        throw new Error("Student does not exist");
-      }
-
-      const studentData = studentSnap.data();
-      const remainingHours =
-        studentData.hours + lesson.hours + lesson.minutes / 60;
-
-      await setDoc(studentRef, {
-        ...studentData,
-        hours: remainingHours,
-      });
+      // update assignment hours
+      const assignmentRef = doc(db, "assignments", assignmentId);
+      const prevHours = userAssignments.find(
+        (assignment) => assignment.id === assignmentId
+      ).hours;
+      await updateDoc(assignmentRef, { hours: prevHours + hours });
 
       // Update students state
       const tempStudents = students.map((student) => {
