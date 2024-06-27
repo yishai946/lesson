@@ -13,6 +13,7 @@ import {
   getDoc,
   onSnapshot,
   updateDoc,
+  Timestamp,
 } from "firebase/firestore";
 
 const AppContext = createContext();
@@ -137,22 +138,33 @@ export const AppProvider = ({ children }) => {
       const assignmentRef = doc(db, "assignments", id);
       await setDoc(assignmentRef, { ...rest, hours: assignmentHours });
 
+      const now = new Date();
+      const timestamp = Timestamp.fromDate(now);
+
       // Add lesson document
       let { assignment, lessonId, ...lessonData } = newLesson;
       const lessonObj = {
         ...lessonData,
         assignmentId: assignment.id,
-        timestamp: serverTimestamp(),
+        timestamp,
       };
 
-      // Define lesson id if it doesn't exist
-      lessonId =
-        lessonId !== "" ? lessonId : `${lessonData.startTime.getTime()}${id}`;
+      lessonId = `${now.getTime()}${id}`;
+
       await setDoc(doc(db, "lessons", lessonId), lessonObj);
     } catch (e) {
       console.error("Error in addLesson:", e);
     }
   };
+
+  // const updateLesson = async (lessonId, newLesson) => {
+  //   try {
+  //     await deleteLesson(lessonId, newLesson.hours, newLesson.assignment.id);
+  //     await addLesson(newLesson, newLesson.assignment.hours);
+  //   } catch (e) {
+  //     console.error("error updating lesson: ", e);
+  //   }
+  // };
 
   const deleteLesson = async (lessonId, hours, assignmentId) => {
     try {
@@ -165,16 +177,6 @@ export const AppProvider = ({ children }) => {
         (assignment) => assignment.id === assignmentId
       ).hours;
       await updateDoc(assignmentRef, { hours: prevHours + hours });
-
-      // Update students state
-      const tempStudents = students.map((student) => {
-        if (student.id === lesson.student.id) {
-          return { ...student, hours: remainingHours };
-        }
-        return student;
-      });
-
-      setStudents(tempStudents);
     } catch (e) {
       console.error("error deleting lesson: ", e);
     }
@@ -230,6 +232,7 @@ export const AppProvider = ({ children }) => {
         deleteLesson,
         checkLesson,
         userAssignments,
+        // updateLesson,
       }}
     >
       {children}

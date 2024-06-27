@@ -33,6 +33,7 @@ const CalendarPage = () => {
     loading,
     setLoading,
     deleteLesson,
+    // updateLesson,
   } = useAppContext();
   const [newLesson, setNewLesson] = useState({
     date: new Date(),
@@ -125,13 +126,6 @@ const CalendarPage = () => {
         throw new Error("End time cannot be before start time.");
       }
 
-      let pastDuration = 0;
-      if (options) {
-        // get the lesson from the lessons array
-        const lesson = lessons.find((item) => item.id === newLesson.id);
-        pastDuration = lesson.hours;
-      }
-
       // Check if the selected student has enough hours left for the new lesson
       const hours = calculateLessonHours(
         newLesson.startTime,
@@ -157,14 +151,31 @@ const CalendarPage = () => {
         hours,
       };
 
-      const assignmentHours = newLesson.assignment.hours - hours + pastDuration;
+      const assignmentHours = newLesson.assignment.hours - hours;
 
-      await addLesson(lesson, assignmentHours);
       closeModal();
+      await addLesson(lesson, assignmentHours);
     } catch (e) {
       Alert.alert(e.message); // Display the error message in the alert
     } finally {
-      setLoading(false);
+      setTimeout(() => {
+        setLoading(false);
+      }, 1000);
+    }
+  };
+
+  const update = () => {
+    try {
+      setLoading(true);
+      // delete the lesson and update the assignment hours
+      handleDelete();
+      closeModal();
+    } catch (e) {
+      console.error("error updating lesson: ", e);
+    } finally {
+      setTimeout(() => {
+        setLoading(false);
+      }, 2000);
     }
   };
 
@@ -261,7 +272,6 @@ const CalendarPage = () => {
     setMarkedDatesObject(markedDatesObject);
   };
 
-  // FIXME: Implement delete functionality
   const handleDelete = async () => {
     try {
       setLoading(true);
@@ -404,7 +414,10 @@ const CalendarPage = () => {
                     <Text style={{ color: "white" }}>Delete</Text>
                   </TouchableOpacity>
                 )}
-                <TouchableOpacity style={styles.modalButton} onPress={add}>
+                <TouchableOpacity
+                  style={styles.modalButton}
+                  onPress={options ? update : add}
+                >
                   <Text style={{ color: "white" }}>
                     {options ? "Update" : "Add Lesson"}
                   </Text>

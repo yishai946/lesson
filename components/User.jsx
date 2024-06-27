@@ -20,7 +20,9 @@ const Student = ({ item, teacher }) => {
         >
           <Entypo name="dots-three-horizontal" size={24} color="black" />
         </TouchableOpacity> */}
-        <Text style={styles.name}>{item.user.username}</Text>
+        <Text style={styles.name}>
+          {item.user.username} - {item.subject}
+        </Text>
         <View style={{ gap: 10 }}>
           {teacher && (
             <>
