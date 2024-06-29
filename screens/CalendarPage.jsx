@@ -269,7 +269,7 @@ const CalendarPage = () => {
       await deleteLesson(
         newLesson.id,
         newLesson.hours,
-        newLesson.assignment.id
+        newLesson.assignment
       );
       closeModal();
     } catch (e) {
