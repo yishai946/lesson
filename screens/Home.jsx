@@ -6,7 +6,7 @@ import Report from "../components/Report";
 import LessonsList from "../components/LessonList";
 
 const Home = () => {
-  const { user, lessons } = useAppContext();
+  const { user, lessons, hours } = useAppContext();
   const [toReport, setToReport] = useState([]);
   const [lessonsToday, setLessonsToday] = useState([]);
   const now = React.useRef(new Date()).current;
@@ -33,7 +33,7 @@ const Home = () => {
     <ScrollView
       contentContainerStyle={{ display: "flex", alignItems: "center" }}
     >
-      <Total hours={user.hours} money={user.money} />
+      <Total hours={hours} />
       <Report lessons={toReport} />
       <LessonsList lessons={lessonsToday} withOptions={false} />
     </ScrollView>

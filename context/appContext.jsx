@@ -13,6 +13,8 @@ import {
   onSnapshot,
   updateDoc,
   Timestamp,
+  sum,
+  getAggregateFromServer,
 } from "firebase/firestore";
 import Toast from "react-native-toast-message";
 
@@ -29,107 +31,113 @@ export const AppProvider = ({ children }) => {
   const [firstAssignmentLoad, setFirstAssignmentLoad] = useState(true); // Track first load of assignments
   const [loadedLessonIds, setLoadedLessonIds] = useState(new Set()); // Track loaded lesson IDs
   const [loadedAssignmentIds, setLoadedAssignmentIds] = useState(new Set()); // Track loaded assignment IDs
+  const [hours, setHours] = useState(0);
   const uid = auth.currentUser?.uid;
 
   // Real-time listener for new assignments for user
-useEffect(() => {
-  const fetchAssignments = async () => {
-    if (!user) return;
+  useEffect(() => {
+    const fetchAssignments = async () => {
+      if (!user) return;
 
-    try {
-      const isTeacher = user.role === "teacher";
-      const roleField = isTeacher ? "teacherId" : "studentId";
-      const oppositeRoleField = isTeacher ? "studentId" : "teacherId";
-      const q = query(
-        collection(db, "assignments"),
-        where(roleField, "==", uid),
-        orderBy("timestamp", "desc")
-      );
-
-      const unsubscribe = onSnapshot(q, async (snapshot) => {
-        const updatedAssignments = [];
-        const userIds = new Set();
-
-        snapshot.docChanges().forEach((change) => {
-          const assignmentData = { ...change.doc.data(), id: change.doc.id };
-
-          if (change.type === "added" || change.type === "modified") {
-            updatedAssignments.push(assignmentData);
-
-            if (change.type === "added" && !firstAssignmentLoad) {
-              if (!loadedAssignmentIds.has(assignmentData.id)) {
-                const message = {
-                  type: "info",
-                  text1: `New ${assignmentData.subject} Assignment added`,
-                };
-                showToast(message);
-                setLoadedAssignmentIds((prev) =>
-                  new Set(prev).add(assignmentData.id)
-                );
-              }
-            }
-
-            userIds.add(assignmentData[oppositeRoleField]);
-          } else if (change.type === "removed") {
-            // Remove assignment and show toast
-            if (!firstAssignmentLoad) {
-              const message = {
-                type: "info",
-                text1: `Assignment for ${assignmentData.subject} deleted`,
-              };
-              showToast(message);
-            }
-          }
-        });
-
-        const userQuery = query(
-          collection(db, "users"),
-          where("__name__", "in", Array.from(userIds))
+      try {
+        const isTeacher = user.role === "teacher";
+        const roleField = isTeacher ? "teacherId" : "studentId";
+        const oppositeRoleField = isTeacher ? "studentId" : "teacherId";
+        const q = query(
+          collection(db, "assignments"),
+          where(roleField, "==", uid),
+          orderBy("timestamp", "desc")
         );
 
-        const res = await getDocs(userQuery);
-        const usersData = res.docs.map((doc) => ({
-          ...doc.data(),
-          docId: doc.id,
-        }));
+        const unsubscribe = onSnapshot(q, async (snapshot) => {
+          const updatedAssignments = [];
+          const userIds = new Set();
+          let totalHours = 0; // Initialize total hours
 
-        updatedAssignments.forEach((assignment) => {
-          const userData = usersData.find(
-            (doc) => doc.docId === assignment[oppositeRoleField]
-          );
-          assignment.user = userData;
-        });
+          snapshot.docChanges().forEach((change) => {
+            const assignmentData = { ...change.doc.data(), id: change.doc.id };
 
-        setUserAssignments((prevAssignments) => {
-          // Merge new assignments with existing ones
-          const mergedAssignments = [...prevAssignments];
-          updatedAssignments.forEach((newAssignment) => {
-            const index = mergedAssignments.findIndex(
-              (assignment) => assignment.id === newAssignment.id
-            );
-            if (index >= 0) {
-              mergedAssignments[index] = newAssignment;
-            } else {
-              mergedAssignments.push(newAssignment);
+            if (change.type === "added" || change.type === "modified") {
+              updatedAssignments.push(assignmentData);
+
+              if (change.type === "added" && !firstAssignmentLoad) {
+                if (!loadedAssignmentIds.has(assignmentData.id)) {
+                  const message = {
+                    type: "info",
+                    text1: `New ${assignmentData.subject} Assignment added`,
+                  };
+                  showToast(message);
+                  setLoadedAssignmentIds((prev) =>
+                    new Set(prev).add(assignmentData.id)
+                  );
+                }
+              }
+
+              userIds.add(assignmentData[oppositeRoleField]);
+            } else if (change.type === "removed") {
+              // Remove assignment and show toast
+              if (!firstAssignmentLoad) {
+                const message = {
+                  type: "info",
+                  text1: `Assignment for ${assignmentData.subject} deleted`,
+                };
+                showToast(message);
+              }
             }
           });
-          return mergedAssignments;
+
+          const userQuery = query(
+            collection(db, "users"),
+            where("__name__", "in", Array.from(userIds))
+          );
+
+          const res = await getDocs(userQuery);
+          const usersData = res.docs.map((doc) => ({
+            ...doc.data(),
+            docId: doc.id,
+          }));
+
+          updatedAssignments.forEach((assignment) => {
+            const userData = usersData.find(
+              (doc) => doc.docId === assignment[oppositeRoleField]
+            );
+            assignment.user = userData;
+            // Accumulate hours from 'done' field
+            totalHours += assignment.done || 0;
+          });
+
+          setUserAssignments((prevAssignments) => {
+            // Merge new assignments with existing ones
+            const mergedAssignments = [...prevAssignments];
+            updatedAssignments.forEach((newAssignment) => {
+              const index = mergedAssignments.findIndex(
+                (assignment) => assignment.id === newAssignment.id
+              );
+              if (index >= 0) {
+                mergedAssignments[index] = newAssignment;
+              } else {
+                mergedAssignments.push(newAssignment);
+              }
+            });
+            return mergedAssignments;
+          });
+
+          if (firstAssignmentLoad) {
+            setFirstAssignmentLoad(false);
+          }
+
+          // Update the total hours state
+          setHours(totalHours);
         });
 
-        if (firstAssignmentLoad) {
-          setFirstAssignmentLoad(false);
-        }
-      });
+        return unsubscribe;
+      } catch (e) {
+        console.error("Error in real-time listener for assignments: ", e);
+      }
+    };
 
-      return unsubscribe;
-    } catch (e) {
-      console.error("Error in real-time listener for assignments: ", e);
-    }
-  };
-
-  fetchAssignments();
-}, [user?.role]);
-
+    fetchAssignments();
+  }, [user?.role]);
 
   // Real-time listener for user lessons
   useEffect(() => {
@@ -223,6 +231,27 @@ useEffect(() => {
     fetchLessons();
   }, [userAssignments]);
 
+  // useEffect(() => {
+  //   if (user?.role == "teacher") {
+  //     const fetchHours = async () => {
+  //       try {
+  //         const q = query(
+  //           collection(db, "assignments"),
+  //           where("teacherId", "==", uid)
+  //         );
+  //         const snapshot = await getAggregateFromServer(q, {
+  //           totalHours: sum("done"),
+  //         });
+
+  //         setHours(snapshot.data().totalHours);
+  //       } catch (e) {
+  //         console.error("Error getting assignments: ", e);
+  //       }
+  //     };
+  //     fetchHours();
+  //   }
+  // }, [user?.role]);
+
   const showToast = (message) => {
     Toast.show({
       ...message,
@@ -247,9 +276,13 @@ useEffect(() => {
   const addLesson = async (newLesson, assignmentHours) => {
     try {
       // Update assignment hours
-      const { user, id, ...rest } = newLesson.assignment;
+      const { user, id, done, ...rest } = newLesson.assignment;
       const assignmentRef = doc(db, "assignments", id);
-      await setDoc(assignmentRef, { ...rest, hours: assignmentHours });
+      await setDoc(assignmentRef, {
+        ...rest,
+        hours: assignmentHours,
+        done: done + newLesson.hours,
+      });
 
       const now = new Date();
       const timestamp = Timestamp.fromDate(now);
@@ -346,7 +379,7 @@ useEffect(() => {
         deleteLesson,
         checkLesson,
         userAssignments,
-        // updateLesson,
+        hours,
       }}
     >
       {children}
@@ -355,5 +388,5 @@ useEffect(() => {
 };
 
 export const useAppContext = () => {
-  return useContext(AppContext)
+  return useContext(AppContext);
 };

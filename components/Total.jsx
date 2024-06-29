@@ -3,8 +3,9 @@ import React from "react";
 
 const width = Dimensions.get("window").width;
 
-const Total = ({ hours, money }) => {
+const Total = ({ hours }) => {
   const progress = parseInt((hours / 80) * 100);
+  const money = hours * 75;
 
   return (
     <View>
