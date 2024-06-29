@@ -3,10 +3,8 @@ import {
   Text,
   View,
   Dimensions,
-  TouchableOpacity,
 } from "react-native";
 import React from "react";
-import { Entypo } from "@expo/vector-icons";
 
 const width = Dimensions.get("window").width;
 
@@ -14,22 +12,12 @@ const Student = ({ item, teacher }) => {
   return (
     item && (
       <View style={styles.container}>
-        {/* <TouchableOpacity
-          style={styles.dots}
-          onPress={() => openOptions(item)}
-        >
-          <Entypo name="dots-three-horizontal" size={24} color="black" />
-        </TouchableOpacity> */}
         <Text style={styles.name}>
           {item.user.username} - {item.subject}
         </Text>
         <View style={{ gap: 10 }}>
           {teacher && (
             <>
-              <View style={styles.row}>
-                <Text>HOURS</Text>
-                <Text>{item.hours}</Text>
-              </View>
               <View style={styles.row}>
                 <Text>ID</Text>
                 <Text>{item.user.id}</Text>
@@ -40,6 +28,10 @@ const Student = ({ item, teacher }) => {
               </View>
             </>
           )}
+          <View style={styles.row}>
+            <Text>HOURS</Text>
+            <Text>{item.hours}</Text>
+          </View>
           <View style={styles.row}>
             <Text>PHONE</Text>
             <Text>{item.user.phone}</Text>
