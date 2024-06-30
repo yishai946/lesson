@@ -206,7 +206,6 @@ export const AppProvider = ({ children }) => {
       const timestamp = Timestamp.fromDate(now);
 
       // add lesson to db
-
       const lessonId = `${now.getTime()}${newLesson.assignment.id}`;
       const lessonObj = {
         ...newLesson,
@@ -239,13 +238,13 @@ export const AppProvider = ({ children }) => {
         ...lesson.assignment,
         hours: lesson.assignment.hours + lesson.hours,
       };
-      
+
       await setDoc(
         doc(db, "assignments", lesson.assignment.id),
         updatedAssignment
       );
 
-      // delete lesson 
+      // delete lesson
       await deleteDoc(doc(db, "lessons", lessonId));
     } catch (e) {
       console.error("Error deleting lesson:", e);

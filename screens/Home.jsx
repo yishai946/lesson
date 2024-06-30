@@ -1,4 +1,10 @@
-import { StyleSheet, View, ScrollView, ActivityIndicator } from "react-native";
+import {
+  StyleSheet,
+  View,
+  ScrollView,
+  ActivityIndicator,
+  Text,
+} from "react-native";
 import React, { useEffect, useState } from "react";
 import { useAppContext } from "../context/appContext";
 import Total from "../components/Total";
@@ -7,39 +13,57 @@ import LessonsList from "../components/LessonList";
 
 const Home = () => {
   const { user, lessons, hours, loading } = useAppContext();
-  const [lessonsToday, setLessonsToday] = useState([]);
-  const now = React.useRef(new Date()).current;
+  const [lessonsNextWeek, setLessonsNextWeek] = useState([]);
 
   useEffect(() => {
-    // filter lesson of today
-    const filtered = lessons.filter((item) => {
-      // convert date string "yyyy-mm-dd" to date object
-      const date = new Date(item.date);
-      return date.toDateString() === now.toDateString();
+    // Calculate dates for now and next week (only date without time)
+    const now = new Date();
+    now.setHours(0, 0, 0, 0); // Set to beginning of the current day
+    const nextWeek = new Date(now);
+    nextWeek.setDate(nextWeek.getDate() + 7); // Set to beginning of next week
+
+    // Filter lessons within the next week based on date only
+    const filteredLessons = lessons.filter((lesson) => {
+      const lessonDate = lesson.date.toDate();
+      lessonDate.setHours(0, 0, 0, 0); // Set to beginning of the lesson date
+      return lessonDate >= now && lessonDate <= nextWeek;
     });
 
-    setLessonsToday(filtered);
-  }, [lessons, now]);
+    // Sort lessons by date (ascending order)
+    filteredLessons.sort((a, b) => a.date.toDate() - b.date.toDate());
+
+    setLessonsNextWeek(filteredLessons);
+  }, [lessons]);
 
   return loading ? (
     <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
       <ActivityIndicator color="royalblue" />
     </View>
   ) : (
-    <ScrollView
-      contentContainerStyle={{ display: "flex", alignItems: "center" }}
-    >
-      {user && user.role == "teacher" && (
+    <ScrollView contentContainerStyle={{ alignItems: "center" }}>
+      {user && user.role === "teacher" && (
         <>
           <Total hours={hours} />
           <Report />
         </>
       )}
-      <LessonsList lessons={lessonsToday} withOptions={false} />
+
+      <View>
+        <Text style={styles.header}>This Week</Text>
+        <LessonsList lessons={lessonsNextWeek} withOptions={false} />
+      </View>
     </ScrollView>
   );
 };
 
 export default Home;
 
-const styles = StyleSheet.create({});
+const styles = StyleSheet.create({
+  header: {
+    fontSize: 20,
+    fontWeight: "bold",
+    alignSelf: "flex-start",
+    margin: 10,
+    marginTop: 20,
+  },
+});

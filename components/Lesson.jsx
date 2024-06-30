@@ -7,10 +7,12 @@ import {
 } from "react-native";
 import React from "react";
 import { Entypo } from "@expo/vector-icons";
+import { useAppContext } from "../context/appContext";
 
 const width = Dimensions.get("window").width;
 
 const Lesson = ({ lesson, openOptions, withOptions }) => {
+  const { user } = useAppContext();
   const startTimeObject = new Date(lesson.startTime.seconds * 1000);
   const endTimeObject = new Date(lesson.endTime.seconds * 1000);
 
@@ -27,9 +29,9 @@ const Lesson = ({ lesson, openOptions, withOptions }) => {
   return (
     <View
       style={
-        !lesson.done
-          ? styles.container
-          : { ...styles.container, borderColor: "green" }
+        lesson.done && user.role == "teacher"
+          ? { ...styles.container, borderColor: "green" }
+          : styles.container
       }
     >
       {withOptions && (

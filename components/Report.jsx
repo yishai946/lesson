@@ -31,7 +31,6 @@ const Report = () => {
         style={{
           display: "flex",
           flexDirection: "row",
-          alignItems: "center",
           marginTop: 30,
         }}
       >
