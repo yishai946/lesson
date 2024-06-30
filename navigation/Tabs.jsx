@@ -1,17 +1,16 @@
 import {
-  MaterialCommunityIcons,
   AntDesign,
+  MaterialCommunityIcons,
   MaterialIcons,
 } from "@expo/vector-icons";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import React from "react";
-import Home from "../screens/Home";
-import Assignments from "../screens/Assignments";
-import CalendarPage from "../screens/CalendarPage";
 import { TouchableOpacity } from "react-native";
 import { useAppContext } from "../context/appContext";
 import Auth from "../functions/Auth";
-import HomeStudent from "../screens/HomeStudent";
+import Assignments from "../screens/Assignments";
+import CalendarPage from "../screens/CalendarPage";
+import Home from "../screens/Home";
 
 const Tab = createBottomTabNavigator();
 
@@ -24,7 +23,7 @@ const Tabs = () => {
     <Tab.Navigator>
       <Tab.Screen
         name="Home"
-        component={isTeacher ? Home : HomeStudent}
+        component={Home}
         options={{
           tabBarLabel: "Home",
           tabBarIcon: ({ color, size }) => (

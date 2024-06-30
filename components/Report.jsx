@@ -6,20 +6,24 @@ import {
   TouchableOpacity,
 } from "react-native";
 import React from "react";
-import { Ionicons, Feather } from "@expo/vector-icons";
-import * as Linking from "expo-linking";
 import { useAppContext } from "../context/appContext";
 
 const width = Dimensions.get("window").width;
-const url =
-  "https://docs.google.com/forms/d/e/1FAIpQLScITsuaUkNsQTjMwwG-Xtml4i4o28L0EyAw6THEbgLOO_qSPQ/viewform?pli=1&pli=1";
 
-const Report = ({ lessons }) => {
-  const { checkLesson } = useAppContext();
+const Report = () => {
+  const { checkLesson, toReport } = useAppContext();
 
-  const link = () => {
-    Linking.openURL(url);
-  };
+  // Create a transformed version of toReport
+  const formattedToReport = toReport.map((item) => ({
+    ...item,
+    formattedDate: item.date.toDate().toISOString().split("T")[0],
+    formattedStartTime: item.startTime
+      .toDate()
+      .toLocaleTimeString()
+      .split(":")
+      .slice(0, 2)
+      .join(":"),
+  }));
 
   return (
     <View>
@@ -32,29 +36,32 @@ const Report = ({ lessons }) => {
         }}
       >
         <Text style={styles.header}>Report</Text>
-        <TouchableOpacity onPress={link}>
-          <Ionicons name="arrow-forward" size={24} color="royalblue" />
-        </TouchableOpacity>
       </View>
       <View style={styles.container}>
-        {lessons.map((item, index) => (
-          <View
-            style={
-              index == lessons.length - 1
-                ? { ...styles.item, borderBottomWidth: 0 }
-                : styles.item
-            }
-            key={index}
-          >
-            <TouchableOpacity onPress={() => checkLesson(item.id)}>
-              <Feather name="minus-square" size={24} color="black" />
-            </TouchableOpacity>
-            <Text>
-              {item.date} | {item.startTime}
-            </Text>
-            <Text style={{ fontWeight: "bold" }}>{item.studentName}</Text>
-          </View>
-        ))}
+        {formattedToReport.length > 0 ? (
+          formattedToReport.map((item, index) => (
+            <View
+              style={
+                index === formattedToReport.length - 1
+                  ? { ...styles.item, borderBottomWidth: 0 }
+                  : styles.item
+              }
+              key={index}
+            >
+              <TouchableOpacity onPress={() => checkLesson(item.id)}>
+                <Feather name="minus-square" size={24} color="black" />
+              </TouchableOpacity>
+              <Text>
+                {item.formattedDate} | {item.formattedStartTime}
+              </Text>
+              <Text style={{ fontWeight: "bold" }}>{item.studentName}</Text>
+            </View>
+          ))
+        ) : (
+          <Text style={{ textAlign: "center", margin: 20 }}>
+            No lessons to report
+          </Text>
+        )}
       </View>
     </View>
   );

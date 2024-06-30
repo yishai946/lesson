@@ -17,7 +17,6 @@ import {
 } from "react-native";
 import { Calendar } from "react-native-calendars";
 import Modal from "react-native-modal";
-import Lesson from "../components/Lesson";
 import { useAppContext } from "../context/appContext";
 import LessonsList from "../components/LessonList";
 
@@ -291,7 +290,7 @@ const CalendarPage = () => {
 
   return loading ? (
     <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-      <ActivityIndicator />
+      <ActivityIndicator color="royalblue" />
     </View>
   ) : (
     <View>

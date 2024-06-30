@@ -4,17 +4,13 @@ import {
   collection,
   doc,
   setDoc,
-  getDocs,
   query,
   where,
-  serverTimestamp,
   orderBy,
   deleteDoc,
   onSnapshot,
-  updateDoc,
   Timestamp,
-  sum,
-  getAggregateFromServer,
+  getDocs,
 } from "firebase/firestore";
 import Toast from "react-native-toast-message";
 
@@ -24,13 +20,13 @@ export const AppProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
-  const [students, setStudents] = useState([]);
   const [userAssignments, setUserAssignments] = useState([]);
   const [lessons, setLessons] = useState([]);
-  const [firstLoad, setFirstLoad] = useState(true); // Track first load of lessons
-  const [firstAssignmentLoad, setFirstAssignmentLoad] = useState(true); // Track first load of assignments
-  const [loadedLessonIds, setLoadedLessonIds] = useState(new Set()); // Track loaded lesson IDs
-  const [loadedAssignmentIds, setLoadedAssignmentIds] = useState(new Set()); // Track loaded assignment IDs
+  const [toReport, setToReport] = useState([]);
+  const [firstLoad, setFirstLoad] = useState(true);
+  const [firstAssignmentLoad, setFirstAssignmentLoad] = useState(true);
+  const [loadedLessonIds, setLoadedLessonIds] = useState(new Set());
+  const [loadedAssignmentIds, setLoadedAssignmentIds] = useState(new Set());
   const [hours, setHours] = useState(0);
   const uid = auth.currentUser?.uid;
 
@@ -52,7 +48,6 @@ export const AppProvider = ({ children }) => {
         const unsubscribe = onSnapshot(q, async (snapshot) => {
           const updatedAssignments = [];
           const userIds = new Set();
-          let totalHours = 0; // Initialize total hours
 
           snapshot.docChanges().forEach((change) => {
             const assignmentData = { ...change.doc.data(), id: change.doc.id };
@@ -102,12 +97,9 @@ export const AppProvider = ({ children }) => {
               (doc) => doc.docId === assignment[oppositeRoleField]
             );
             assignment.user = userData;
-            // Accumulate hours from 'done' field
-            totalHours += assignment.done || 0;
           });
 
           setUserAssignments((prevAssignments) => {
-            // Merge new assignments with existing ones
             const mergedAssignments = [...prevAssignments];
             updatedAssignments.forEach((newAssignment) => {
               const index = mergedAssignments.findIndex(
@@ -125,9 +117,6 @@ export const AppProvider = ({ children }) => {
           if (firstAssignmentLoad) {
             setFirstAssignmentLoad(false);
           }
-
-          // Update the total hours state
-          setHours(totalHours);
         });
 
         return unsubscribe;
@@ -141,7 +130,7 @@ export const AppProvider = ({ children }) => {
 
   // Real-time listener for user lessons
   useEffect(() => {
-    if (!userAssignments.length > 0) return;
+    if (userAssignments.length <= 0) return;
 
     const fetchLessons = async () => {
       try {
@@ -154,103 +143,41 @@ export const AppProvider = ({ children }) => {
           orderBy("startTime", "desc")
         );
 
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-          let updatedLessons = [...lessons]; // Clone the existing lessons
+        onSnapshot(q, (snapshot) => {
+          const updatedLessons = snapshot.docs.map((doc) => ({
+            ...doc.data(),
+            id: doc.id,
+          }));
 
-          snapshot.docChanges().forEach((change) => {
-            const lessonData = { ...change.doc.data(), id: change.doc.id };
-
-            if (change.type === "added" || change.type === "modified") {
-              const existingLessonIndex = updatedLessons.findIndex(
-                (lesson) => lesson.id === lessonData.id
-              );
-
-              if (existingLessonIndex >= 0) {
-                // Update the existing lesson
-                updatedLessons[existingLessonIndex] = lessonData;
-              } else {
-                // Add the new lesson
-                updatedLessons.push(lessonData);
-
-                // Show toast for new lesson if not first load
-                if (!firstLoad) {
-                  if (!loadedLessonIds.has(lessonData.id)) {
-                    const date = new Date(
-                      lessonData.date.seconds * 1000 +
-                        Math.floor(lessonData.date.nanoseconds / 1000000)
-                    )
-                      .toISOString()
-                      .split("T")[0];
-
-                    const subject = userAssignments.find(
-                      (assignment) => assignment.id === lessonData.assignmentId
-                    )?.subject;
-
-                    const message = {
-                      type: "info",
-                      text1: `New ${subject} Lesson added`,
-                      text2: `${date}`,
-                    };
-                    showToast(message);
-                  }
-                } else {
-                  setFirstLoad(false);
-                }
-              }
-            } else if (change.type === "removed") {
-              updatedLessons = updatedLessons.filter(
-                (lesson) => lesson.id !== lessonData.id
-              );
-
-              // Show toast for deleted lesson if not first load
-              const subject = userAssignments.find(
-                (assignment) => assignment.id === lessonData.assignmentId
-              )?.subject;
-
-              const message = {
-                type: "info",
-                text1: `Lesson for ${subject} deleted`,
-              };
-              showToast(message);
-            }
-
-            setLoadedLessonIds((prev) => new Set(prev).add(lessonData.id));
-          });
-
-          // Attach assignments to lessons
-          const temp = attachAssignmentsToLessons(updatedLessons);
-          setLessons(temp);
+          const lessonsWithAssignments =
+            attachAssignmentsToLessons(updatedLessons);
+          setLessons(lessonsWithAssignments);
         });
-
-        return unsubscribe;
       } catch (e) {
-        console.error("Error getting lessons: ", e);
+        console.error("Error in real-time listener for lessons: ", e);
       }
     };
 
     fetchLessons();
   }, [userAssignments]);
 
-  // useEffect(() => {
-  //   if (user?.role == "teacher") {
-  //     const fetchHours = async () => {
-  //       try {
-  //         const q = query(
-  //           collection(db, "assignments"),
-  //           where("teacherId", "==", uid)
-  //         );
-  //         const snapshot = await getAggregateFromServer(q, {
-  //           totalHours: sum("done"),
-  //         });
+  useEffect(() => {
+    if (lessons.length <= 0) return;
 
-  //         setHours(snapshot.data().totalHours);
-  //       } catch (e) {
-  //         console.error("Error getting assignments: ", e);
-  //       }
-  //     };
-  //     fetchHours();
-  //   }
-  // }, [user?.role]);
+    const toReportUpdate = lessons.filter(
+      (lesson) => !lesson.done && lesson.date.toDate() < new Date()
+    );
+    setToReport(toReportUpdate);
+
+    const totalHours = lessons.reduce((acc, lesson) => {
+      if (lesson.done) {
+        return acc + lesson.hours;
+      }
+      return acc;
+    }, 0);
+
+    setHours(totalHours);
+  }, [lessons]);
 
   const showToast = (message) => {
     Toast.show({
@@ -273,95 +200,68 @@ export const AppProvider = ({ children }) => {
     });
   };
 
-  const addLesson = async (newLesson, assignmentHours) => {
+  const addLesson = async (newLesson) => {
     try {
-      // Update assignment hours
-      const { user, id, done, ...rest } = newLesson.assignment;
-      const assignmentRef = doc(db, "assignments", id);
-      await setDoc(assignmentRef, {
-        ...rest,
-        hours: assignmentHours,
-        done: done + newLesson.hours,
-      });
-
       const now = new Date();
       const timestamp = Timestamp.fromDate(now);
 
-      // Add lesson document
-      let { assignment, lessonId, ...lessonData } = newLesson;
+      // add lesson to db
+
+      const lessonId = `${now.getTime()}${newLesson.assignment.id}`;
       const lessonObj = {
-        ...lessonData,
-        assignmentId: assignment.id,
+        ...newLesson,
+        assignmentId: newLesson.assignment.id,
         timestamp,
       };
 
-      lessonId = `${now.getTime()}${id}`;
-
       await setDoc(doc(db, "lessons", lessonId), lessonObj);
+
+      // update assignment hours
+      const updatedAssignment = {
+        ...newLesson.assignment,
+        hours: newLesson.assignment.hours - newLesson.hours,
+      };
+
+      await setDoc(
+        doc(db, "assignments", newLesson.assignment.id),
+        updatedAssignment
+      );
     } catch (e) {
       console.error("Error in addLesson:", e);
     }
   };
 
-  const deleteLesson = async (lessonId, hours, assignment) => {
+  const deleteLesson = async (lessonId) => {
     try {
-      // delete lesson document
-      await deleteDoc(doc(db, "lessons", lessonId));
-
       // update assignment hours
-      const assignmentRef = doc(db, "assignments", assignment.id);
-      const prevHours = userAssignments.find(
-        (userAssignment) => userAssignment.id === assignment.id
-      ).hours;
-      await updateDoc(assignmentRef, { hours: prevHours + hours });
+      const lesson = lessons.find((lesson) => lesson.id === lessonId);
+      const updatedAssignment = {
+        ...lesson.assignment,
+        hours: lesson.assignment.hours + lesson.hours,
+      };
+      
+      await setDoc(
+        doc(db, "assignments", lesson.assignment.id),
+        updatedAssignment
+      );
 
-      // Update students state
-      const tempStudents = students.map((student) => {
-        if (student.id === assignment.studentId) {
-          return { ...student, hours: remainingHours };
-        }
-        return student;
-      });
-
-      setStudents(tempStudents);
+      // delete lesson 
+      await deleteDoc(doc(db, "lessons", lessonId));
     } catch (e) {
-      console.error("error deleting lesson: ", e);
+      console.error("Error deleting lesson:", e);
     }
   };
 
   const checkLesson = async (lessonId) => {
     try {
-      const lessonUpdated = lessons.find((lesson) => lesson.id === lessonId);
-      lessonUpdated.done = !lessonUpdated.done;
-      const lessonRef = doc(db, "lessons", lessonId);
-      await setDoc(lessonRef, lessonUpdated);
-      const temp = lessons.map((lesson) => {
-        if (lesson.id === lessonId) {
-          return lessonUpdated;
-        }
-        return lesson;
-      });
-      setLessons(temp);
-
-      // update the user hours and money
-      const userRef = doc(db, "users", uid);
-      let money = user.money;
-      let hours = user.hours;
-
-      const lessonHours = lessonUpdated.hours + lessonUpdated.minutes / 60;
-
-      hours += lessonHours;
-      money += lessonHours * 75;
-
-      await setDoc(userRef, {
-        ...user,
-        hours,
-        money,
-      });
-
-      setUser({ ...user, hours, money });
+      setLoading(true);
+      const lesson = lessons.find((lesson) => lesson.id === lessonId);
+      const updatedLesson = { ...lesson, done: !lesson.done };
+      await setDoc(doc(db, "lessons", lessonId), updatedLesson);
     } catch (e) {
-      console.error("error checking lesson: ", e);
+      console.error("Error checking lesson:", e);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -380,6 +280,7 @@ export const AppProvider = ({ children }) => {
         checkLesson,
         userAssignments,
         hours,
+        toReport,
       }}
     >
       {children}
